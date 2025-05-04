@@ -54,7 +54,7 @@ export const SignIn = ({ navigation }: SignInProps) => {
             <Formik
               initialValues={{
                 email: 'duygu.aydin@gmail.com',
-                password: '%^kGMZHvg%',
+                password: '123123',
               }}
               validationSchema={signInValidationSchema}
               onSubmit={async (values, { setSubmitting }) => {
@@ -87,13 +87,14 @@ export const SignIn = ({ navigation }: SignInProps) => {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     placeholder="example@example.com"
+                    placeholderTextColor='#A09FA0'
                     mode="outlined"
                     value={values.email}
                     onChangeText={handleChange('email')}
                     onBlur={handleBlur('email')}
                     style={styles.input}
                     theme={{ roundness: 40 }}
-                    outlineStyle={{ borderWidth: 0 }}
+                    outlineColor="transparent"
                     error={touched.email && !!errors.email}
                   />
                   {touched.email && errors.email && (
@@ -107,12 +108,14 @@ export const SignIn = ({ navigation }: SignInProps) => {
                     value={values.password}
                     onChangeText={handleChange('password')}
                     onBlur={handleBlur('password')}
+                    placeholderTextColor='#A09FA0'
                     style={styles.input}
                     theme={{ roundness: 40 }}
-                    outlineStyle={{ borderWidth: 0 }}
+                    outlineColor="transparent"
                     secureTextEntry={!showPassword}
                     right={
                       <PaperTextInput.Icon
+                        // eslint-disable-next-line react/no-unstable-nested-components
                         icon={() => (
                           <Image
                             source={

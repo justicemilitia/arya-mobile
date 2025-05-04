@@ -47,16 +47,17 @@ export const Investments = () => {
           key={index}
           title={item.title}
           type={item.type}
+          // eslint-disable-next-line react-native/no-inline-styles
           style={{
             marginBottom: index === menuItems.length - 1 ? 0 : 8,
           }}
           onPress={() => {
             switch (item.type) {
               case 'startups':
-                navigate('Startups');
+                navigate({ name: 'Startups', params: { type: 1 } });
                 break;
               case 'closedDeals':
-                navigate('ClosedDeals');
+                navigate({ name: 'Startups', params: { type: 2 } });
                 break;
               case 'betterFutureCirclesDays':
                 navigate('BetterFutureCirclesDays');

@@ -86,7 +86,6 @@ const step1ValidationSchema = Yup.object().shape({
 
 const step2ValidationSchema = Yup.object().shape({
   carrier: Yup.object().shape({
-    is_company_owner: Yup.boolean().required('This field is required'),
     company_name: Yup.string().when('is_company_owner', (isCompanyOwner, schema) =>
       isCompanyOwner ? schema.required('Company name is required') : schema.notRequired()
     ),
@@ -120,11 +119,9 @@ export const MembershipForm = ({ navigation, route, initialValues, onSubmit }: M
     }
   };
 
-  console.log('Initial Values:', initialValues);
-
   const handleStepSubmit = async (values: any, actions: any, nextStep?: number) => {
     try {
-      console.log(`Submitting Step ${step} values:`, values);
+      //console.log(`Submitting Step ${step} values:`, values);
       if(step === 1){
            setIsLoading(true);
             await API.put('/api/user-my-personal-information', {
@@ -134,6 +131,7 @@ export const MembershipForm = ({ navigation, route, initialValues, onSubmit }: M
               linkedin_url: values.linkedin_url,
               date_of_birth: values.date_of_birth,
               address: values.address,
+              is_mentor: false,
             });
             setIsLoading(false);
       }
@@ -226,7 +224,7 @@ export const MembershipForm = ({ navigation, route, initialValues, onSubmit }: M
                 full_name: initialValues.full_name || '',
                 email: initialValues.email || '',
                 phone: initialValues.phone || '',
-                linkedin_url: initialValues.linkedin_url || '',
+                linkedin_url: 'https://www.linkedin.com/in/khangaikh/',
                 date_of_birth: initialValues.date_of_birth || '',
                 address: initialValues.address || '',
               }}
@@ -347,6 +345,7 @@ export const MembershipForm = ({ navigation, route, initialValues, onSubmit }: M
                       editable={false}
                       right={
                         <PaperTextInput.Icon
+                          // eslint-disable-next-line react/no-unstable-nested-components
                           icon={() => (
                             <Image
                               source={require('../../assets/flat-icons/calendar-outlined.png')}
@@ -562,11 +561,11 @@ export const MembershipForm = ({ navigation, route, initialValues, onSubmit }: M
           {step === 3 && (
             <Formik<Step3FormValues>
               initialValues={{
-                introduction_paragraph: initialValues.additional.introduction_paragraph || '',
-                profile_type: initialValues.additional.role ?? null,
-                batch_type: initialValues.additional.batch ?? null,
-                is_agreement_accepted: initialValues.additional.is_agreement_accepted || false,
-                is_confidentiality_accepted: initialValues.additional.is_confidentiality_accepted || false,
+                introduction_paragraph: initialValues.additional?.introduction_paragraph ?? '',
+                profile_type: initialValues.additional?.role ?? null,
+                batch_type: initialValues.batch ?? null,
+                is_agreement_accepted: initialValues.additional?.is_agreement_accepted ?? false,
+                is_confidentiality_accepted: initialValues.additional?.is_confidentiality_accepted ?? false,
               }}
               validationSchema={step3ValidationSchema}
               onSubmit={(values, actions) => handleStepSubmit(values, actions)}

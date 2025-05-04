@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { Appbar, Avatar, Button, Chip, Text, useTheme, MD3Theme } from 'react-native-paper';
+import { Appbar, Avatar, Button, Chip, Text, useTheme, MD3Theme, Portal, Modal, IconButton, TouchableRipple } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { connect, useSelector } from 'react-redux';
+import { connect, useDispatch, useSelector } from 'react-redux';
 import { ScrollView } from 'react-native-gesture-handler';
 import { MainStackParams } from '../models/navigation';
-import { setAuthToken } from '../redux/auth/reducer';
+import { setAuthToken, setLogout } from '../redux/auth/reducer';
 import { View } from '../components/common/View';
 import { UserModel } from '../models/users/User';
 import { RootState } from '../redux/configureStore';
@@ -17,6 +17,7 @@ import { InterestModel } from '../models/general/models';
 import { ProfileEditForm, ProfileEditFormValues } from '../components/forms/ProfileEditForm';
 import { StartUpForm, StartUpFormValues } from '../components/forms/StartUpForm';
 import { useNavigationContext } from '../contexts/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 type ProfileProps = StackScreenProps<MainStackParams, 'Profile'> & {
   setAuthToken: (accessToken: string | null) => void;
@@ -26,16 +27,20 @@ const mapDispatchToProps = {
   setAuthToken,
 };
 
-const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: ProfileProps) => {
+const ProfileComponent = ({ navigation }: ProfileProps) => {
   const { token } = useSelector((state: RootState) => state.auth);
   const { user_id } = useSelector((state: RootState) => state.auth);
+  const { role } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const { width } = useWindowDimensions();
   const [isLoading, setIsLoading] = useState(false);
   const { colors } = useTheme();
-  const dynamicStyles = createDynamicStyles(colors);
+  const dynamicStyles = createDynamicStyles(colors,width);
   const [stage, setStage] = useState<'interest' | 'startup' | 'profile' | 'edit_profile'>('profile');
   const [interests, setInterests] = useState<InterestModel[]>([]);
   const [selectedInterests, setSelectedInterests] = useState<number[]>([]);
   const [profile, setProfile] = useState<UserModel | null>(null);
+  const [visible, setVisible] = useState(false);
   const { setHideTabBar } = useNavigationContext();
 
   useEffect(() => {
@@ -44,7 +49,7 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
 
   const { isFetching: isFetchingProfile, refetch } = useQuery(
     ['profile', token],
-    () => API.get('/api/user/my-all-infos'),
+    () => API.get('/api/users/my-all-infos'),
     {
       onSuccess: ({ data }) => {
         setProfile(data);
@@ -80,10 +85,10 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
   };
 
   const handleLogout = () => {
-    setAuthTokenProp(null);
+    dispatch(setLogout(1));
     navigation.reset({
       index: 0,
-      routes: [{ name: 'SplashScreen' }],
+      routes: [{ name: 'SignIn' }],
     });
   };
 
@@ -98,19 +103,21 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
         user_id: user_id,
         interest_ids: selectedInterests,
       });
-      setStage('profile');
+
     } catch (error) {
       console.error('Error saving user info:', error);
     } finally {
       setIsLoading(false);
+      setStage('profile');
+      await refetch();
     }
   };
 
   const handleSelectInterest = (interest: InterestModel) => {
     setSelectedInterests((prev) =>
-      prev.includes(interest.interest_id)
-        ? prev.filter((id) => id !== interest.interest_id)
-        : [...prev, interest.interest_id]
+      prev.includes(interest.id)
+        ? prev.filter((id) => id !== interest.id)
+        : [...prev, interest.id]
     );
   };
 
@@ -122,13 +129,17 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
         await API.put('/api/users/current-user-full_name', { full_name: values.full_name });
         updatedProfile.full_name = values.full_name ?? updatedProfile.full_name;
       }
+      if (values.is_mentor !== profile?.is_mentor) {
+        await API.put('/api/users/current-user-is-mentor', { is_mentor: values.is_mentor });
+        updatedProfile.is_mentor = values.is_mentor ?? updatedProfile.is_mentor;
+      }
       if (values.company !== profile?.carrier.company_name) {
         updatedProfile.carrier.company_name = values.company ?? updatedProfile.carrier.company_name;
       }
-      if (values.sector?.sector_id !== profile?.carrier.sector?.id) {
+      if (values.sector?.value !== profile?.carrier.sector?.id) {
         updatedProfile.carrier.sector = {
           ...updatedProfile.carrier.sector,
-          id: values.sector?.sector_id ?? updatedProfile.carrier.sector.id,
+          id: values.sector?.value ?? updatedProfile.carrier.sector.id,
         };
       }
       if (values.title !== profile?.carrier.title) {
@@ -192,6 +203,49 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
     }
   };
 
+  const checkRole = (role: string) => {
+      if (role === 'Investor') {
+        return (
+          <Image
+            resizeMode="contain"
+            source={require('../assets/flat-icons/diamond.png')}
+            style={[dynamicStyles.roleIcon, { tintColor: '#00AEEF' }]}
+          />
+        );
+      } else if (role === 'Premium' || role === 'Other') {
+        return (
+          <Image
+            resizeMode="contain"
+            source={require('../assets/flat-icons/crown.png')}
+            style={[dynamicStyles.roleIcon, { tintColor: '#B61D8D' }]}
+          />
+        );
+      } else if (role === 'Entrepreneur') {
+        return (
+          <Image
+            resizeMode="contain"
+            source={require('../assets/flat-icons/rocket.png')}
+            style={[dynamicStyles.roleIcon, { tintColor: '#F99F1C' }]}
+          />
+        );
+      } else {
+        return (
+          <Image
+            resizeMode="contain"
+            source={require('../assets/flat-icons/crown-lined.png')}
+            style={[dynamicStyles.roleIcon]}
+          />
+        );
+      }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      // we don’t need a cleanup here
+    }, [refetch])
+  );
+
   if (isDataLoading) {
     return (
       <View style={styles.loaderContainer}>
@@ -216,9 +270,18 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
           <Appbar.Content
             title={
               <View style={dynamicStyles.titleContainer}>
-                <Text variant="titleMedium" style={dynamicStyles.titleText}>
-                  {profile?.additional.role.name}
-                </Text>
+                    <>
+                    <Text
+                            style={dynamicStyles.roleText}
+                          >
+                            {((profile?.role && (profile?.role.name === 'Other') ? 'Premium' : (profile?.role.name)) || '')}
+                          </Text>
+
+                    {checkRole(profile?.role?.name || '')}
+                     
+                     
+                         
+                    </>
               </View>
             }
           />
@@ -261,14 +324,14 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
             <Appbar.Action
               icon={require('../assets/flat-icons/edit.png')}
               color="#414042"
-              size={20}
+              size={16}
               style={dynamicStyles.appbarActionRight}
               onPress={() => setStage('edit_profile')}
             />
             <Appbar.Action
               icon={require('../assets/flat-icons/logout.png')}
               color="#414042"
-              size={20}
+              size={16}
               style={dynamicStyles.appbarActionRight}
               onPress={handleLogout}
             />
@@ -287,8 +350,13 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
                 />
                 <View>
                   <Text variant="titleSmall" style={dynamicStyles.nameText}>
-                    {profile?.full_name}
+                    {profile?.full_name} 
                   </Text>
+                  {profile?.is_mentor === true && (
+                  <Text variant="titleSmall" style={dynamicStyles.mentorShipText}>
+                    Mentorship
+                  </Text>
+                  )}
                   <View style={dynamicStyles.locationContainer}>
                     <View style={dynamicStyles.locationItem}>
                       <Image
@@ -310,30 +378,22 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
                     </View>
                   </View>
                   <View>
-                  <View style={styles.roleBadge}>
-                    {profile?.describes?.map((describe, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.interestBox}
-                          onPress={() => {}}
-                        >
-                          <Image
-                            source={
-                              describe.icon
-                                ? { uri: describe.icon }
-                                : require('../assets/flat-icons/rocket-outlined.png')
-                            }
-                            style={styles.interestIcon}
-                          />
-                          <Text style={styles.interestText}>{describe.name}</Text>
-                        </TouchableOpacity>
-                      ))}
+                    <View style={dynamicStyles.roleBadge}>
+                      {profile?.describes?.map((describe, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.interestBox}
+                            onPress={() => {}}
+                          >
+                            <Text style={styles.interestText}>{describe.name}</Text>
+                          </TouchableOpacity>
+                        ))}
                     </View>
                   </View>
                 </View>
               </View>
               <Text style={dynamicStyles.descriptionText}>
-              {profile?.carrier?.title} | {profile?.carrier?.area_of_expertise}
+                {profile?.carrier?.title} | {profile?.carrier?.area_of_expertise}
               </Text>
               <View style={dynamicStyles.buttonRow}>
                 <Button
@@ -342,18 +402,30 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
                   textColor={colors.primary}
                   icon={require('../assets/flat-icons/user-add.png')}
                   style={dynamicStyles.buttonMargin}
-                  onPress={() => {}}
+                  onPress={() => {
+                    if (role === 4) {
+                      setVisible(true);
+                    } else {
+                      navigation.navigate('UserMembers', { refresh:false , myUsers: true });
+                    }
+                  }}
                 >
-                  Connections (2)
+                  Connections ({profile?.following.length})
                 </Button>
                 <Button
                   mode="contained"
                   buttonColor={colors.secondary}
                   textColor={colors.primary}
                   icon={require('../assets/flat-icons/heart.png')}
-                  onPress={() => {}}
+                  onPress={() => {
+                    if (role === 4) {
+                      setVisible(true);
+                    } else {
+                      navigation.navigate('Startups', { type: 0, filterModel: undefined, myStartups:true });
+                    }
+                  }}
                 >
-                  Followed (10)
+                  Followed ({profile?.followers.length})
                 </Button>
               </View>
             </View>
@@ -390,9 +462,8 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
                 <Pressable
                   key={startup.id || `startup-${index}`}
                   style={dynamicStyles.startupItem}
-                  onPress={() => navigation.navigate('Startup', { id: startup?.id.toString() })}
+                  onPress={() => navigation.navigate('Startup', { id: startup?.id })}
                 >
-                  <Text>{startup?.id.toString()}</Text>
                   <View style={dynamicStyles.startupItem}>
                     <Image
                       source={startup.startup_logo ? { uri: startup.startup_logo } : require('../assets/wave.png')}
@@ -409,10 +480,11 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
                 </Pressable>
               ))}
             </View>
-
-            <Button mode="contained" onPress={() => setStage('startup')} style={dynamicStyles.logoutButton}>
-              Add start up
-            </Button>
+            {(role === 4 && profile?.batch && role === 4 && profile?.batch.id === 6) && (
+              <Button mode="contained" onPress={() => setStage('startup')} style={dynamicStyles.logoutButton}>
+                Add start up
+              </Button>
+            )}
           </>
         )}
         {stage === 'interest' && (
@@ -427,14 +499,16 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
           <ProfileEditForm
             initialValues={{
               user_id: user_id ?? 1,
-              role: profile?.roles[0].role_name,
+              role: profile?.role.name,
               photo: profile?.photo,
               full_name: profile?.full_name ?? undefined,
-              company: profile?.carrier.company_name,
-              sector: profile?.carrier.sector
-                ? { id: profile.carrier.sector.id, name: profile.carrier.sector.name }
+              company: profile?.carrier?.company_name ?? undefined,
+              sector: profile?.carrier?.sector
+                ? { id: profile.carrier?.sector.id, name: profile.carrier.sector.name }
                 : undefined,
-              title: profile?.carrier.title,
+              title: profile?.carrier?.title ?? undefined,
+              is_mentor: profile?.is_mentor || false,
+              portrait_photo : profile?.portrait_photo ?? undefined,
             }}
             onSubmit={handleProfileUpdate}
           />
@@ -457,24 +531,73 @@ const ProfileComponent = ({ navigation, setAuthToken: setAuthTokenProp }: Profil
           />
         )}
       </ScrollView>
+      <Portal>
+        <Modal
+            visible={visible}
+            onDismiss={() => setVisible(false)}
+            contentContainerStyle={styles.modal}
+        >
+            <IconButton
+                icon={require('../assets/flat-icons/x.png')}
+                size={20}
+                iconColor="#A09FA0"
+                style={styles.modalClose}
+                onPress={() => setVisible(false)}
+            />
+            <Image
+                resizeMode="contain"
+                source={require('../assets/flat-icons/diamond.png')}
+                style={styles.modalIcon}
+            />
+            <Text variant="headlineSmall" style={styles.modalTitle}>
+                Please become a Premium member to join
+            </Text>
+            <View style={styles.modalButtons}>
+                <TouchableRipple
+                    style={styles.modalButton}
+                    onPress={() => {setVisible(false);}}
+                >
+                    <Text variant="titleMedium" style={styles.modalButtonText}>
+                        Not now
+                    </Text>
+                </TouchableRipple>
+                <TouchableRipple
+                    style={styles.modalButtonPrimary}
+                    onPress={() => {
+                      setVisible(false);
+                      navigation.navigate('MemberShip', {
+                        agreed_agreement: false,
+                        agreed_confidentiality: false,
+                      });
+                    }}
+                >
+                    <Text variant="titleMedium" style={styles.modalButtonPrimaryText}>
+                        Arya Premium
+                    </Text>
+                </TouchableRipple>
+            </View>
+        </Modal>
+      </Portal>
     </SafeAreaView>
   );
 };
 
 export const Profile = connect(null, mapDispatchToProps)(ProfileComponent);
 
-const createDynamicStyles = (colors: MD3Theme['colors']) =>
+const createDynamicStyles = (colors: MD3Theme['colors'], width: number) =>
   StyleSheet.create({
     safeAreaView: {
-      flex: 1,
+      width: width,
       justifyContent: 'center',
       alignItems: 'center',
     },
     scrollView: {
       paddingBottom: 150,
+      marginHorizontal: 10,
+      width: width - 20,
     },
     appbarHeader: {
-      width: '100%',
+      width: width,
       backgroundColor: 'transparent',
       alignContent: 'center',
       justifyContent: 'space-between',
@@ -482,10 +605,12 @@ const createDynamicStyles = (colors: MD3Theme['colors']) =>
     },
     appbarActionRight: {
       backgroundColor: colors.onPrimary,
-      marginRight: 5,
     },
     titleContainer: {
+      flexDirection: 'row',
       alignItems: 'center',
+      gap: 4,
+      justifyContent:'center',
     },
     titleText: {
       fontWeight: 'bold',
@@ -494,14 +619,15 @@ const createDynamicStyles = (colors: MD3Theme['colors']) =>
     interestText: {
       fontWeight: 'bold',
       paddingLeft: 0,
-      marginLeft: 0,
+      marginLeft: -40,
     },
     profileHeader: {
       alignItems: 'center',
       justifyContent: 'space-between',
       flexDirection: 'row',
       marginBottom: 12,
-      marginHorizontal: 30,
+      width: width - 20,
+      paddingHorizontal: 10,
     },
     avatar: {
       backgroundColor: '#f2f4f7',
@@ -511,69 +637,47 @@ const createDynamicStyles = (colors: MD3Theme['colors']) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 5,
+      width: width - 40,
     },
     locationContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: 'column',
+      gap:4,
       marginVertical: 8,
+      width:250,
     },
     locationItem: {
       flexDirection: 'row',
-      alignItems: 'center',
-      marginLeft: 8,
+      alignItems: 'flex-start',
     },
     iconLocation: {
       width: 14,
       height: 14,
-      marginRight: 8,
+      marginRight: 2,
       tintColor: '#414042',
     },
     descriptionText: {
-     paddingHorizontal: 2,
-      marginHorizontal: 30,
-      width: 350,
+      paddingHorizontal: 2,
+      width: width - 24,
     },
     buttonRow: {
       flexDirection: 'row',
       marginVertical: 12,
-      width: 350,
-      marginHorizontal: 30,
+      width: width - 20,
     },
     buttonMargin: {
       marginRight: 4,
     },
-    buttonBadge: {
-      marginVertical: 4,
-      backgroundColor: '#F2A93B',
-      borderRadius: 20,
-      height: 25,
-      paddingTop: 0,
-    },
-    buttonText: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      marginVertical: 8,
-      lineHeight: 15,
-    },
-    buttonContent: {
-      height: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-    },
     sectionContainer: {
       borderRadius: 16,
       backgroundColor: '#fff',
-      paddingHorizontal: 10,
       paddingVertical: 12,
-      width: 350,
-      marginHorizontal: 30,
+      width: width - 20,
     },
     interestsContainer: {
       marginTop: 12,
       flexDirection: 'row',
       flexWrap: 'wrap',
+      marginLeft:14,
       gap: 4,
     },
     chipInterests: {
@@ -583,16 +687,14 @@ const createDynamicStyles = (colors: MD3Theme['colors']) =>
       marginTop: 8,
       borderRadius: 16,
       backgroundColor: '#fff',
-      paddingHorizontal: 16,
       paddingVertical: 12,
-      width: 350,
-      marginHorizontal: 30,
+      width: width - 20,
     },
     startupItem: {
       marginTop: 12,
       paddingHorizontal: 8,
       flexDirection: 'row',
-      width: '90%',
+      width: width - 68,
     },
     startupImage: {
       width: 40,
@@ -602,25 +704,44 @@ const createDynamicStyles = (colors: MD3Theme['colors']) =>
     startupText: {
       marginTop: 2,
       fontSize: 11,
+      paddingRight:10,
     },
     logoutButton: {
       marginTop: 20,
-      marginHorizontal: 30,
-      width:350,
+      width: width - 20,
+    },
+    roleBadge: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 5,
+      width: 200,
     },
     nameText: {
       color: '#414042',
-      marginLeft: 8,
-      fontSize: 20,
+      fontSize: 16,
       fontWeight: 'bold',
+    },
+    mentorShipText: {
+      color: '#4CB748',
+      fontSize: 13,
     },
     sectionText: {
       color: '#414042',
       fontSize: 14,
       fontWeight: 'bold',
       marginBottom: 8,
+      marginTop:10,
+      marginLeft:10,
     },
-  });
+    roleIcon: {
+      width: 14,
+      height: 14,
+    },
+    roleText: {
+      fontSize: 14,
+      marginLeft:40,
+    },
+});
 
 const styles = StyleSheet.create({
   loaderContainer: {
@@ -640,12 +761,6 @@ const styles = StyleSheet.create({
     tintColor: '#B61D8D',
     marginRight: 4,
   },
-  roleBadge: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5, 
-    width: 300,
-  },
   roleEntrepreneur: {
     width: 14,
     height: 14,
@@ -658,7 +773,7 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 15,
     backgroundColor: '#f5f5f5',
-    marginBottom: 4, // Space between items vertically
+    marginBottom: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -671,11 +786,61 @@ const styles = StyleSheet.create({
   interestText: {
     fontSize: 11,
     lineHeight: 12,
-    paddingLeft: 5,
+    paddingHorizontal: 5,
   },
   interestIcon: {
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
     tintColor: '#A09FA0',
+  },
+  modal: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    margin: 24,
+    padding: 16,
+  },
+  modalClose: {
+      position:'absolute',
+      top:10,
+      left:250,
+  },
+  modalIcon: {
+      alignSelf: 'center',
+      width: 56,
+      height: 56,
+      tintColor: '#B61D8D',
+      marginVertical: 24,
+  },
+  modalTitle: {
+      textAlign: 'center',
+  },
+  modalText: {
+      textAlign: 'center',
+      marginTop: 8,
+  },
+  modalButtons: {
+      marginTop: 24,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      rowGap: 8,
+  },
+  modalButton: {
+      flex: 1,
+      paddingVertical: 12.5,
+      borderRadius: 32,
+      alignItems: 'center',
+  },
+  modalButtonText: {
+      textAlign: 'center',
+  },
+  modalButtonPrimary: {
+      paddingVertical: 12.5,
+      paddingHorizontal: 28.5,
+      backgroundColor: '#B61D8D',
+      borderRadius: 32,
+      alignItems: 'center',
+  },
+  modalButtonPrimaryText: {
+      color: '#FFFFFF',
   },
 });

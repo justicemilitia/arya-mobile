@@ -9,9 +9,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, Button, Avatar, IconButton } from 'react-native-paper';
+import { Text, Button, Avatar, IconButton, Switch } from 'react-native-paper';
 import { Asset, launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -28,6 +29,8 @@ export interface ProfileEditFormValues {
   sector?: Sector;
   address?: string;
   title?: string;
+  is_mentor?: boolean;
+  portrait_photo?: string;
 }
 export interface ProfileEditProps {
   initialValues: ProfileEditFormValues;
@@ -49,23 +52,27 @@ const profileValidationSchema = Yup.object().shape({
 
 export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) => {
   const [avatarUri, setAvatarUri] = useState(initialValues.photo);
+  const [portraitUri, setPortraitUri] = useState(initialValues.portrait_photo);
   const [isUploading, setIsUploading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
 
-  const handleEditPhoto = () => {
+  const [isUploading1, setIsUploading1] = useState(false);
+  const [isPortraitLoading, setIsPortraitLoading] = useState(false);
+
+  const handleEditPhoto = (type:number) => {
     Alert.alert(
       'Select Photo',
       'Choose the source:',
       [
-        { text: 'Camera', onPress: openCamera },
-        { text: 'Gallery', onPress: openGallery },
+        { text: 'Camera', onPress: () => openCamera(type) },
+        { text: 'Gallery', onPress: () => openGallery(type) },
         { text: 'Cancel', style: 'cancel' },
       ],
       { cancelable: true }
     );
   };
 
-  const openCamera = () => {
+  const openCamera = (type: number) => {
     launchCamera({ mediaType: 'photo' }, (response) => {
       if (response.didCancel) {
         console.log('User cancelled camera picker');
@@ -73,12 +80,17 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
         console.log('Camera error: ', response.errorMessage);
       } else if (response.assets && response.assets.length > 0) {
         const photo = response.assets[0];
-        uploadPhoto(photo);
+        if(type === 1){
+          uploadPhoto(photo);
+        }
+        else{
+          uploadPort(photo);
+        }
       }
     });
   };
 
-  const openGallery = () => {
+  const openGallery = (type: number) => {
     launchImageLibrary({ mediaType: 'photo' }, (response) => {
       if (response.didCancel) {
         console.log('User cancelled gallery picker');
@@ -86,7 +98,12 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
         console.log('Gallery error: ', response.errorMessage);
       } else if (response.assets && response.assets.length > 0) {
         const photo = response.assets[0];
-        uploadPhoto(photo);
+        if(type === 1){
+          uploadPhoto(photo);
+        }
+        else{
+          uploadPort(photo);
+        }
       }
     });
   };
@@ -94,7 +111,6 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
   const uploadPhoto = async (photo: Asset) => {
     setIsUploading(true);
     const formData = new FormData();
-    formData.append('user_id', initialValues?.user_id?.toString() || '');
     formData.append('photo', {
       uri: photo.uri,
       type: photo.type,
@@ -102,8 +118,9 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
     });
 
     try {
+      const apiUrl = '/api/current-user-profile-photo';
       const response = await API.put(
-        `/api/update-user-profile-photo?user_id=${initialValues?.user_id}`,
+        apiUrl,
         formData,
         {
           headers: {
@@ -122,6 +139,37 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
     }
   };
 
+  const uploadPort = async (photo: Asset) => {
+    setIsUploading1(true);
+    const formData = new FormData();
+    formData.append('photo', {
+      uri: photo.uri,
+      type: photo.type,
+      name: photo.fileName || 'photo.jpg',
+    });
+
+    try {
+      const apiUrl = '/api/current-user-portrait-photo';
+      const response = await API.put(
+        apiUrl,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Accept: 'application/json',
+          },
+        }
+      );
+      if (response?.data.photo_url != null) {
+        setPortraitUri(response.data.photo_url);
+      }
+    } catch (error) {
+      console.error('Upload failed', error);
+    } finally {
+      setIsUploading1(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <KeyboardAvoidingView
@@ -133,36 +181,37 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
           contentContainerStyle={styles.scrollViewContent}
         >
           <View style={styles.container}>
-            <View style={styles.avatarContainer}>
-              <Avatar.Image
-                size={120}
-                source={
-                  avatarUri
-                    ? { uri: avatarUri }
-                    : { uri: 'https://via.placeholder.com/80?text=Profile' }
-                }
-                onLoadStart={() => setIsImageLoading(true)}
-                onLoadEnd={() => setIsImageLoading(false)}
-              />
-              {(isUploading || isImageLoading) && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator animating={true} size="large" color="#fff" />
-                </View>
-              )}
-              <TouchableOpacity
-                style={styles.editIconContainer}
-                onPress={handleEditPhoto}
-              >
-                <IconButton
-                  icon={require('../../assets/flat-icons/edit.png')}
-                  size={15}
-                  mode="contained"
-                  containerColor="#9C27B0"
-                  iconColor="#fff"
+            <View style={styles.avatarsContainer}>
+              <View style={styles.avatarContainer}>
+                <Avatar.Image
+                  size={120}
+                  source={
+                    avatarUri
+                      ? { uri: avatarUri }
+                      : require('../../assets/default-portrait.jpg')
+                  }
+                  onLoadStart={() => setIsImageLoading(true)}
+                  onLoadEnd={() => setIsImageLoading(false)}
                 />
-              </TouchableOpacity>
+                {(isUploading || isImageLoading) && (
+                  <View style={styles.loadingOverlay}>
+                    <ActivityIndicator animating={true} size="large" color="#fff" />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.editIconContainer}
+                  onPress={() => handleEditPhoto(1)}
+                >
+                  <IconButton
+                    icon={require('../../assets/flat-icons/edit.png')}
+                    size={15}
+                    mode="contained"
+                    containerColor="#9C27B0"
+                    iconColor="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-
             <Formik
               initialValues={initialValues}
               validationSchema={profileValidationSchema}
@@ -178,6 +227,7 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
                 errors,
                 touched,
                 isSubmitting,
+                setFieldValue,
               }) => (
                 <View style={styles.formContainer}>
                   <Text variant="titleSmall" style={styles.title}>
@@ -213,8 +263,8 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
                     apiUrl="/api/sectors"
                     fieldName="sector"
                     label="Sector"
-                    labelKey="sector_name"
-                    valueKey="sector_id"
+                    labelKey="name"
+                    valueKey="id"
                     initialValue={{ label: values.sector?.name || '', value: Number(values.sector?.id) || 0 }}
                     onValueChange={(item: SelectItem<Sector> | null) => {
                       if (item) {
@@ -237,6 +287,52 @@ export const ProfileEditForm = ({ initialValues, onSubmit }: ProfileEditProps) =
                     <Text style={styles.errorText}>{errors.title}</Text>
                   )}
 
+                  <View style={styles.switch}>
++                   <Text variant="bodyMedium">Mentorship</Text>
+                    <Switch
+                      value={values.is_mentor}
+                      onValueChange={(val) => {
+                        setFieldValue('is_mentor', val).catch((error) =>
+                          console.error('Error setting field value:', error)
+                        );
+                      }}
+                    />
+                  </View>
+                  <Text variant="titleSmall" style={styles.title}>
+                    Portrait photo
+                  </Text>
+                  <Text variant="titleSmall" style={styles.input1}>
+                    This phot is displayed in Member Discovery. It must be portrait. It is not mandatory.
+                  </Text>
+                  <View style={[styles.avatarContainer, {marginBottom: 40}]}>
+                    <Image
+                      source={
+                        portraitUri
+                          ? { uri: portraitUri }
+                          : require('../../assets/default-portrait.jpg')
+                      }
+                      onLoadStart={() => setIsPortraitLoading(true)}
+                      onLoadEnd={() => setIsPortraitLoading(false)}
+                      style={styles.avatarImage}
+                    />
+                    {(isUploading1 || isPortraitLoading) && (
+                      <View style={styles.loadingOverlay}>
+                        <ActivityIndicator animating={true} size="large" color="#fff" />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={styles.editIconContainer1}
+                      onPress={() => handleEditPhoto(2)}
+                    >
+                      <IconButton
+                        icon={require('../../assets/flat-icons/edit.png')}
+                        size={15}
+                        mode="contained"
+                        containerColor="#9C27B0"
+                        iconColor="#fff"
+                      />
+                    </TouchableOpacity>
+                  </View>
                   <Button
                     mode="contained"
                     style={styles.saveButton}
@@ -273,6 +369,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarsContainer: {
+    flex: 1,
+    flexDirection:'row',
+    alignItems: 'center',
+    gap: 10,
+    justifyContent: 'center',
+  },
   loadingOverlay: {
     position: 'absolute',
     width: 120,
@@ -285,8 +388,14 @@ const styles = StyleSheet.create({
   editIconContainer: {
     position: 'absolute',
     bottom: 0,
-    right: 100,
-    top: 80,
+    right: 5,
+    top: 90,
+  },
+  editIconContainer1: {
+    position: 'absolute',
+    bottom: 0,
+    right: 90,
+    top: 140,
   },
   formContainer: {
     marginTop: 32,
@@ -297,6 +406,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     padding: 12,
+    borderRadius: 20,
+    borderColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
+  },
+  input1: {
+    marginTop: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    padding: 12,
+    fontSize:12,
+    fontStyle:'italic',
+    borderRadius: 20,
+    borderColor: '#f5f5f5',
+    backgroundColor: '#f5f5f5',
+  },
+  switch: {
+    flex:1,
+    flexDirection:'row',
+    marginTop: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    paddingHorizontal:10,
+    paddingVertical:8,
+    justifyContent: 'space-between', alignItems: 'center',
     borderRadius: 20,
     borderColor: '#f5f5f5',
     backgroundColor: '#ffffff',
@@ -326,6 +459,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: 'bold',
+  },
+  avatarImage: {
+    width: 95,
+    height: 160,
+    borderRadius: 5,
   },
 });
 

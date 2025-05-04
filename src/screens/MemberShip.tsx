@@ -21,7 +21,7 @@ export const MemberShip = ({ navigation, route }: MemberShipProps) => {
   // Fetch user profile data using useQuery
   const { data: profileData, isFetching: isFetchingProfile } = useQuery<UserModel>(
     ['profile', token],
-    () => API.get('/api/user/my-all-infos'),
+    () => API.get('/api/users/my-all-infos'),
     {
       enabled: !!token,
       select: (response) => response.data, // Directly select the data portion as UserModel
@@ -32,7 +32,8 @@ export const MemberShip = ({ navigation, route }: MemberShipProps) => {
   );
 
   const handleSubmit = (values: UserModel) => {
-    navigation.navigate('PremiumSuccess');
+    navigation.navigate('PaymentLocation')
+    //navigation.navigate('PremiumSuccess');
   };
 
   // Show loading state while fetching

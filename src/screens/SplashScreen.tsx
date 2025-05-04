@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MainStackParams } from '../models/navigation';
+import { StackScreenProps } from '@react-navigation/stack';
 
-type NavigationType = {
-  navigate: (screen: string) => void;
-};
+type SplashScreenProps = StackScreenProps<MainStackParams, 'SplashScreen'>;
 
-export const SplashScreen = (): JSX.Element => {
-  const navigation = useNavigation<NavigationType>();
+export const SplashScreen = ({ navigation, route }: SplashScreenProps) => {
+
+  let type = route.params?.type;
   const { width, height } = useWindowDimensions();
 
   // currentStep: 0 -> Step 1, 1 -> Step 2, 2 -> Step 3, 3 -> (existing) Step 4
@@ -129,7 +130,7 @@ export const SplashScreen = (): JSX.Element => {
           behavior={Platform.OS === 'android' ? 'height' : 'padding'}
         >
           <View style={styles.container}>
-          <Text
+            <Text
               style={styles.skipContainer}
               onPress={handleSkip}
               >
@@ -191,7 +192,10 @@ export const SplashScreen = (): JSX.Element => {
             “Shining stars are not afraid of others shining.”
           </Text>
           <Button mode="contained" style={styles.discoverButton}>
-            <Text variant="titleMedium" style={{ color: '#fff' }}>
+            <Text 
+              variant="titleMedium"
+              style={{ color: '#fff' }}
+              onPress={() => navigation.navigate('SignUp',{ agreed: false, type: 2})}            >
               Discover Arya
             </Text>
           </Button>
@@ -199,7 +203,7 @@ export const SplashScreen = (): JSX.Element => {
             <Text
               variant="titleMedium"
               style={{ color: '#414042' }}
-              onPress={() => navigation.navigate('SignUp')}
+              onPress={() => navigation.navigate('SignUp', { agreed: false, type: 2})}
             >
               Ready to join Arya
             </Text>
@@ -240,7 +244,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 10,
     justifyContent: 'center',
   },
   // Reused top container for Steps 1-3
@@ -250,9 +254,7 @@ const styles = StyleSheet.create({
   },
   // Buttons at bottom for Steps 1-3
   bottomButtonContainer: {
-    paddingHorizontal:10,
-    alignItems:'center',
-    marginBottom: 20,
+    flex:1,
   },
   title: {
     paddingTop:10,
@@ -260,6 +262,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay-SemiBold',
     marginBottom: 12,
     textAlign: 'center',
+    marginTop: 60,
   },
   description: {
     fontSize: 14,
@@ -267,8 +270,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   nextButton: {
+    marginTop:60,
     backgroundColor: '#B61D8D',
-    width: '45%',
   },
   skipButton: {
     width: '45%',

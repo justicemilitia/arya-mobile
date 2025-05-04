@@ -10,7 +10,7 @@ export interface DescribeModel extends BaseEntityModel {
 
 export interface InterestModel extends BaseEntityModel {
     id: number;
-    interes_name: string;
+    name: string;
     title: string;
     category_id: number;
     icon?: string | null;
@@ -92,16 +92,43 @@ export interface BatchModel {
     [key: string]: any;
 }
 
-export interface Image {
+export interface Image  {
+    id: number;
     image_url?: string | null;
     alt_text?: string | null;
 
     [key: string]: any;
 }
 
-export interface ContentTypeModel extends BaseEntityModel {
-    id: string;
+export interface ContentTypeModel{
+    id: number;
     name?: string | null;
+
+    [key: string]: any;
+}
+
+export interface EventModel {
+    id: number;
+    event_date: string | null;
+    event_finish_date:  string | null;
+    event_sub_title: string | null;
+    event_location: string | null;
+    event_address: string | null;
+    event_coordinates: string | null;
+    max_participants: number | null;
+    is_better_future_circle_days: boolean;
+
+    [key: string]: any;
+}
+
+export interface EventTypeModel {
+    id: number;
+    type_name: string | null;
+    description:  string | null;
+    icon_dark: string | null;
+    icon_light: string | null;
+    is_active: boolean | null;
+    is_visible_category: boolean | null;
 
     [key: string]: any;
 }

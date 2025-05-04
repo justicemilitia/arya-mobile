@@ -12,6 +12,8 @@ export interface UserModel extends BaseEntityModel {
     phone : null | string;
     address: null | string;
     photo: string;
+    role: ProfileModel;
+    batch: BatchModel;
     interests: InterestModel[];
     describes: DescribeModel[];
     received_references: {
@@ -36,11 +38,24 @@ export interface UserModel extends BaseEntityModel {
         id: number;
         introduction_paragraph: string;
         role: ProfileModel;
-        batch: BatchModel
         payment_method: string;
         is_agreement_accepted: boolean;
         is_confidentiality_accepted: boolean;
-    }
+    };
+    is_favorited?:boolean;
+    is_mentor: boolean;
+    followers:{
+        id: number;
+        full_name: string
+        photo: string;
+    }[];
+    following:{
+        id: number;
+        full_name: string
+        photo: string;
+    }[];
+    portrait_photo?: string;
 }
 
-export type UserModelWithoutContent = Pick<UserModel, 'id' | 'full_name'>;
+export type UserModelWithoutContent = Pick<UserModel, 'id' | 'full_name' | 'email' | 'photo' | 'title'>;
+export type UserModelList = Pick<UserModel, 'id' | 'full_name' | 'title' | 'photo' | 'describes' | 'role' | 'interests' | 'is_favorited' | 'carrier'>;

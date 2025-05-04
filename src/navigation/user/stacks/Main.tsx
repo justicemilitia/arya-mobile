@@ -11,9 +11,7 @@ import { BetterFutureCirclesDays } from '../../../screens/BetterFutureCirclesDay
 import { BKYLicense } from '../../../screens/BKYLicense';
 import { BKYSuccess } from '../../../screens/BKYSuccess';
 import { ClosedDeals } from '../../../screens/ClosedDeals';
-import { Content } from '../../../screens/Content';
 import { DisclosureText } from '../../../screens/DisclosureText';
-import { Inspiration } from '../../../screens/Inspiration';
 import { Inspirations } from '../../../screens/Inspirations';
 import { InvestorTrainings } from '../../../screens/InvestorTrainings';
 import { IPILicense } from '../../../screens/IPILicence';
@@ -32,6 +30,19 @@ import { Workshops } from '../../../screens/Workshops';
 import { BottomTab } from '../tabs/BottomTab';
 import { Profile } from '../../../screens/Profile';
 import {PremiumSuccess} from '../../../screens/PremiumSuccess';
+import PaymentForm from '../../../components/forms/PaymentForm';
+import { StripePayment } from '../../../screens/StripePayment';
+import { MokaPayment } from '../../../screens/MokaPayment';
+import ThreeDSecureScreen from '../../../screens/ThreeDSecureScreen';
+import { FundingRound } from '../../../screens/FundingRound';
+import { FundingSuccess } from '../../../screens/FundingSuccess';
+import { MemberDiscovery } from '../../../screens/MemberDiscovery';
+import { SplashScreen } from '../../../screens/SplashScreen';
+import Members from '../../../screens/Members';
+import UserMembers from '../../../screens/UserMembers';
+import { Events } from '../../../screens/Events';
+import SignIn from '../../../screens/SignIn';
+
 
 const Stack = createNativeStackNavigator<MainStackParams>();
 
@@ -42,23 +53,6 @@ const SearchIconButton = ({ onPress }: { onPress: () => void }) => (
     style={styles.iconButton}
     onPress={onPress}
   />
-);
-
-const StartupHeaderRight = () => (
-  <View style={styles.startupHeaderRight}>
-    <IconButton
-      icon={require('../../../assets/flat-icons/heart-outlined.png')}
-      size={24}
-      style={styles.heartIconButton}
-      onPress={() => {}}
-    />
-    <IconButton
-      icon={require('../../../assets/flat-icons/menu.png')}
-      size={24}
-      style={styles.menuIconButton}
-      onPress={() => {}}
-    />
-  </View>
 );
 
 export const MainStack = () => {
@@ -96,7 +90,6 @@ export const MainStack = () => {
         />
         <Stack.Screen name="BKYLicense" component={BKYLicense} options={{ title: 'BKY License' }} />
         <Stack.Screen name="InvestorTrainings" component={InvestorTrainings} options={{ title: 'Investor trainings' }} />
-        <Stack.Screen name="Content" component={Content} options={{ headerShown: false }} />
         <Stack.Screen
           name="ClosedDeals"
           component={ClosedDeals}
@@ -107,37 +100,34 @@ export const MainStack = () => {
         />
         <Stack.Screen name="DisclosureText" component={DisclosureText} options={{ title: 'Disclosure text' }} />
         <Stack.Screen name="Search" component={Search} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="Startup"
-          component={Startup}
-          options={{
-            title: 'Startup',
-            headerRight: () => <StartupHeaderRight />,
-          }}
-        />
+        <Stack.Screen name="FundingRound" component={FundingRound} options={{ headerShown: false }} />
+        <Stack.Screen name="Startup" component={Startup} options={{ headerShown: false }}/>
         <Stack.Screen name="StartupsFilter" component={StartupsFilter} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="Startups"
-          component={Startups}
-          options={{
-            title: 'Startups in funding round',
-            headerRight: () => <SearchIconButton onPress={() => {}} />,
-          }}
-        />
+        <Stack.Screen name="Startups" component={Startups} options={{ headerShown: false }}/>
         <Stack.Screen name="Workshop" component={Workshop} options={{ headerShown: false }} />
         <Stack.Screen name="Workshops" component={Workshops} options={{ title: 'Entrepreneur workshops' }} />
-        <Stack.Screen name="Inspiration" component={Inspiration} options={{ headerShown: false }} />
         <Stack.Screen name="IPILicense" component={IPILicense} options={{ title: 'IPI License form' }} />
         <Stack.Screen name="OnBoarding" component={OnBoarding} options={{ headerShown: false }} />
         <Stack.Screen name="Member" component={Member} options={{ headerShown: false }} />
+        <Stack.Screen name="Members" component={Members} options={{ headerShown: false }} />
+        <Stack.Screen name="UserMembers" component={UserMembers} options={{ headerShown: false }} />
         <Stack.Screen name="MemberShip" component={MemberShip} options={{ title: 'Membership' }} />
         <Stack.Screen name="PremiumSuccess" component={PremiumSuccess} options={{ title: 'Premium Success' }} />
+        <Stack.Screen name="FundingSuccess" component={FundingSuccess} options={{ headerShown: false }} />
         <Stack.Screen name="MemberFilter" component={MemberFilter} options={{ headerShown: false }} />
         <Stack.Screen name="Inspirations" component={Inspirations} options={{ title: 'Inspirations' }} />
         <Stack.Screen name="BKYSuccess" component={BKYSuccess} options={{ headerShown: false }} />
         <Stack.Screen name="Training" component={Training} options={{ headerShown: false }} />
         <Stack.Screen name="Notifications" component={Notifications} options={{ title: 'Notifications' }} />
         <Stack.Screen name="Profile" component={Profile} options={{ title: 'Profile' }} />
+        <Stack.Screen name="Events" component={Events} options={{ title: 'Events' }} />
+        <Stack.Screen name="MemberDiscovery" component={MemberDiscovery} options={{  headerShown: false }} />
+        <Stack.Screen name="SplashScreen" component={SplashScreen} options={{  headerShown: false }}/>
+        <Stack.Screen name="SignIn" component={SignIn} options={{  headerShown: false }}/>
+        <Stack.Screen name="PaymentLocation" component={PaymentForm} />
+        <Stack.Screen name="StripePayment" component={StripePayment} />
+        <Stack.Screen name="MokaPayment" component={MokaPayment} />
+        <Stack.Screen name="ThreeDSecureScreen" component={ThreeDSecureScreen} />
       </Stack.Group>
     </Stack.Navigator>
   );
